@@ -1,0 +1,16 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Module",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "prosperity4bt",
+            "cwd": "${workspaceFolder}/imc-prosperity-4-backtester-main",
+            "args": [
+                "./prosperity4bt/Trader.py",
+                "0"
+            ],
+        }
+    ]
+}
