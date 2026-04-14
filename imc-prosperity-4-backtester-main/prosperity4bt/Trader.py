@@ -208,14 +208,112 @@ class Tomato:
         history[:] = [price_ema, spread_ema]
         return orders
 
+class ASH_COATED_OSMIUM:
+    def __init__(self):
+        self.max_pos = 80
+        self.window_size = 20
+        self.alpha = 0.3
+
+    def computeOrders(self, product, order_depth, current_pos, history):
+        orders = []
+        if not order_depth.sell_orders or not order_depth.buy_orders:
+            return orders
+        
+        best_ask = min(order_depth.sell_orders.keys())
+        best_bid = max(order_depth.buy_orders.keys())
+        current_mid = (best_ask + best_bid) / 2
+        current_spread = best_ask - best_bid
+        if len(history) < 2:
+            price_ema = current_mid
+            spread_ema = current_spread
+        else:
+            price_ema = (self.alpha * current_mid) + (1 - self.alpha) * history[0]
+            spread_ema = (self.alpha * current_spread) + (1 - self.alpha) * history[1]
+
+        offset = max(3, (spread_ema / 2) - 3)
+
+        for price, amount in order_depth.sell_orders.items():
+            if price < price_ema - (offset + 1) and current_pos < self.max_pos:
+                qty = min(-amount, self.max_pos - current_pos)
+                orders.append(Order(product, price, qty))
+                current_pos += qty
+
+        for price, amount in order_depth.buy_orders.items():
+            if price > price_ema + (offset + 1) and current_pos > -self.max_pos:
+                qty = max(-amount, -self.max_pos - current_pos)
+                orders.append(Order(product, price, qty))
+                current_pos += qty
+        
+        if current_pos < self.max_pos:
+            bid_price = int(price_ema - offset)
+            bid_price = min(bid_price, best_bid + 1)
+            orders.append(Order(product, bid_price, self.max_pos - current_pos))
+
+        if current_pos > -self.max_pos:
+            ask_price = int(price_ema + offset)
+            ask_price = max(ask_price, best_ask - 1)
+            orders.append(Order(product, ask_price, -self.max_pos - current_pos))
+        history[:] = [price_ema, spread_ema]
+        return orders
+
+class INTARIAN_PEPPER_ROOT:
+    def __init__(self):
+        self.max_pos = 80
+        self.window_size = 20
+        self.alpha = 0.3
+
+    def computeOrders(self, product, order_depth, current_pos, history):
+        orders = []
+        if not order_depth.sell_orders or not order_depth.buy_orders:
+            return orders
+        
+        best_ask = min(order_depth.sell_orders.keys())
+        best_bid = max(order_depth.buy_orders.keys())
+        current_mid = (best_ask + best_bid) / 2
+        current_spread = best_ask - best_bid
+        if len(history) < 2:
+            price_ema = current_mid
+            spread_ema = current_spread
+        else:
+            price_ema = (self.alpha * current_mid) + (1 - self.alpha) * history[0]
+            spread_ema = (self.alpha * current_spread) + (1 - self.alpha) * history[1]
+
+        offset = max(3, (spread_ema / 2) - 3)
+
+        for price, amount in order_depth.sell_orders.items():
+            if price < price_ema - (offset + 1) and current_pos < self.max_pos:
+                qty = min(-amount, self.max_pos - current_pos)
+                orders.append(Order(product, price, qty))
+                current_pos += qty
+
+        for price, amount in order_depth.buy_orders.items():
+            if price > price_ema + (offset + 1) and current_pos > -self.max_pos:
+                qty = max(-amount, -self.max_pos - current_pos)
+                orders.append(Order(product, price, qty))
+                current_pos += qty
+        
+        if current_pos < self.max_pos:
+            bid_price = int(price_ema - offset)
+            bid_price = min(bid_price, best_bid + 1)
+            orders.append(Order(product, bid_price, self.max_pos - current_pos))
+
+        if current_pos > -self.max_pos:
+            ask_price = int(price_ema + offset)
+            ask_price = max(ask_price, best_ask - 1)
+            orders.append(Order(product, ask_price, -self.max_pos - current_pos))
+        history[:] = [price_ema, spread_ema]
+        return orders
+
 
 class Trader:
     def __init__(self):
         self.strategies = {
             "EMERALDS" : Emerald(),
             "TOMATOES" : Tomato(),
+            "ASH_COATED_OSMIUM" : ASH_COATED_OSMIUM(),
+            "INTARIAN_PEPPER_ROOT" : INTARIAN_PEPPER_ROOT(),
         }
-        self.history = {"TOMATOES": [], "EMERALDS": []}
+        self.history = {"TOMATOES": [], "EMERALDS": [], "ASH_COATED_OSMIUM": [], "INTARIAN_PEPPER_ROOT": []}
 
     def run(self, state: TradingState) -> tuple[dict[Symbol, list[Order]], int, str]:
         result = {}
