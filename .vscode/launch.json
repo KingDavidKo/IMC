@@ -9,7 +9,7 @@
             "cwd": "${workspaceFolder}/imc-prosperity-4-backtester-main",
             "args": [
                 "./prosperity4bt/Trader.py",
-                "0"
+                "1"
             ],
         }
     ]
