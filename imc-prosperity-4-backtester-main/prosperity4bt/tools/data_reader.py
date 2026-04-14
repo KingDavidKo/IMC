@@ -83,7 +83,7 @@ class BackDataReader:
         if round == 0:
             return [-2, -1]
         if round == 1:
-            return [-3, -2, -1, 0]
+            return [-2, -1, 0]
         if round == 2:
             return [-1, 0, 1]
         if round == 3:
