@@ -1,4 +1,5 @@
 import json
+import math
 from typing import Any
 
 from datamodel import Listing, Observation, Order, OrderDepth, ProsperityEncoder, Symbol, Trade, TradingState
@@ -258,50 +259,56 @@ class ASH_COATED_OSMIUM:
 
 class INTARIAN_PEPPER_ROOT:
     def __init__(self):
+        self.window_size = 10
         self.max_pos = 80
-        self.window_size = 20
-        self.alpha = 0.3
+        self.spread_history = []
 
-    def computeOrders(self, product, order_depth, current_pos, history):
+    def computeOrders(self,product,order_depth,current_pos, price_history=[]):
         orders = []
+
         if not order_depth.sell_orders or not order_depth.buy_orders:
             return orders
-        
         best_ask = min(order_depth.sell_orders.keys())
         best_bid = max(order_depth.buy_orders.keys())
-        current_mid = (best_ask + best_bid) / 2
-        current_spread = best_ask - best_bid
-        if len(history) < 2:
-            price_ema = current_mid
-            spread_ema = current_spread
-        else:
-            price_ema = (self.alpha * current_mid) + (1 - self.alpha) * history[0]
-            spread_ema = (self.alpha * current_spread) + (1 - self.alpha) * history[1]
 
-        offset = max(3, (spread_ema / 2) - 3)
+        if best_ask is None or best_bid is None:
+            return orders
+
+        current_market_spread = (best_ask - best_bid)/2
+        self.spread_history.append(current_market_spread)
+        if len(self.spread_history) > 20:
+            self.spread_history.pop(0)
+        avg_market_spread = round(sum(self.spread_history) / len(self.spread_history))
+        
+        current_mid = (best_ask + best_bid) / 2
+        price_history.append(current_mid)
+
+        if len(price_history) > self.window_size:
+            price_history.pop(0)
+        
+        if len(price_history) >= 2:
+            slope = (price_history[-1] - price_history[0]) / len(price_history)
+            predicted_price = price_history[-1] + slope
+        else:
+            predicted_price = current_mid
+        # predicted_price = round(predicted_price)
 
         for price, amount in order_depth.sell_orders.items():
-            if price < price_ema - (offset + 1) and current_pos < self.max_pos:
-                qty = min(-amount, self.max_pos - current_pos)
-                orders.append(Order(product, price, qty))
-                current_pos += qty
-
+            if price < predicted_price and current_pos < self.max_pos:
+                buy_qty = min(-amount, self.max_pos - current_pos)
+                orders.append(Order(product, price, buy_qty))
+                current_pos += buy_qty
         for price, amount in order_depth.buy_orders.items():
-            if price > price_ema + (offset + 1) and current_pos > -self.max_pos:
-                qty = max(-amount, -self.max_pos - current_pos)
-                orders.append(Order(product, price, qty))
-                current_pos += qty
+            if price > predicted_price and current_pos > -self.max_pos:
+                sell_qty = max(-amount, -self.max_pos - current_pos)
+                orders.append(Order(product, price, sell_qty))
+                current_pos += sell_qty
         
+        # The math.floor and math.ceil are losing 800 bucks, but prevents errors in the system. worth investigating
         if current_pos < self.max_pos:
-            bid_price = int(price_ema - offset)
-            bid_price = min(bid_price, best_bid + 1)
-            orders.append(Order(product, bid_price, self.max_pos - current_pos))
-
+            orders.append(Order(product, math.ceil(predicted_price - avg_market_spread), self.max_pos - current_pos))
         if current_pos > -self.max_pos:
-            ask_price = int(price_ema + offset)
-            ask_price = max(ask_price, best_ask - 1)
-            orders.append(Order(product, ask_price, -self.max_pos - current_pos))
-        history[:] = [price_ema, spread_ema]
+            orders.append(Order(product, math.floor(predicted_price + avg_market_spread), -self.max_pos - current_pos))
         return orders
 
 
