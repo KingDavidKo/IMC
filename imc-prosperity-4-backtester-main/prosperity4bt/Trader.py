@@ -285,13 +285,11 @@ class INTARIAN_PEPPER_ROOT:
 
         if len(price_history) > self.window_size:
             price_history.pop(0)
-        
         if len(price_history) >= 2:
             slope = (price_history[-1] - price_history[0]) / len(price_history)
             predicted_price = price_history[-1] + slope
         else:
             predicted_price = current_mid
-        # predicted_price = round(predicted_price)
 
         for price, amount in order_depth.sell_orders.items():
             if price < predicted_price and current_pos < self.max_pos:
@@ -303,12 +301,11 @@ class INTARIAN_PEPPER_ROOT:
                 sell_qty = max(-amount, -self.max_pos - current_pos)
                 orders.append(Order(product, price, sell_qty))
                 current_pos += sell_qty
-        
-        # The math.floor and math.ceil are losing 800 bucks, but prevents errors in the system. worth investigating
+
         if current_pos < self.max_pos:
-            orders.append(Order(product, math.ceil(predicted_price - avg_market_spread), self.max_pos - current_pos))
+            orders.append(Order(product, math.ceil(predicted_price + avg_market_spread), self.max_pos - current_pos))
         if current_pos > -self.max_pos:
-            orders.append(Order(product, math.floor(predicted_price + avg_market_spread), -self.max_pos - current_pos))
+            orders.append(Order(product, math.ceil(predicted_price + 2*avg_market_spread), -self.max_pos - current_pos))
         return orders
 
 
