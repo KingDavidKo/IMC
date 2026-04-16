@@ -212,7 +212,6 @@ class Tomato:
 class ASH_COATED_OSMIUM:
     def __init__(self):
         self.max_pos = 80
-        self.window_size = 20
         self.alpha = 0.3
 
     def computeOrders(self, product, order_depth, current_pos, history):
