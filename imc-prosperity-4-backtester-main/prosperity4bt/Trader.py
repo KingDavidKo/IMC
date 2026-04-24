@@ -134,6 +134,8 @@ class Logger:
         return out
 
 logger = Logger()
+
+# Horizontal line (m = 0)
 class Emerald:
     def __init__(self):
         self.mean_price = 10000
@@ -141,6 +143,7 @@ class Emerald:
     def computeOrders(self,product,order_depth,current_pos, price_history=[]):
         orders = []
 
+        # Take any favorable trades
         for price, amount in order_depth.sell_orders.items():
             if price < self.mean_price and current_pos < self.max_pos:
                 buy_qty = min(-amount, self.max_pos - current_pos)
@@ -152,6 +155,7 @@ class Emerald:
                 orders.append(Order(product, price, sell_qty))
                 current_pos += sell_qty
         
+        # Market make (buy just above the bids, sell just below the asks)
         room_to_buy = self.max_pos - current_pos
         room_to_sell = -self.max_pos - current_pos
         if room_to_buy > 0:
@@ -161,6 +165,7 @@ class Emerald:
             orders.append(Order(product, self.mean_price + 7, room_to_sell))
         return orders
 
+# Just volatile
 class Tomato:
     def __init__(self):
         self.max_pos = 80
@@ -185,6 +190,7 @@ class Tomato:
 
         offset = max(3, (spread_ema / 2) - 3)
 
+        # Take any favorable trades
         for price, amount in order_depth.sell_orders.items():
             if price < price_ema - (offset + 1) and current_pos < self.max_pos:
                 qty = min(-amount, self.max_pos - current_pos)
@@ -197,6 +203,7 @@ class Tomato:
                 orders.append(Order(product, price, qty))
                 current_pos += qty
         
+        # Market make, using the ema price
         if current_pos < self.max_pos:
             bid_price = int(price_ema - offset)
             bid_price = min(bid_price, best_bid + 1)
@@ -209,6 +216,7 @@ class Tomato:
         history[:] = [price_ema, spread_ema]
         return orders
 
+# Volatile along the average of 10k
 class ASH_COATED_OSMIUM:
     def __init__(self):
         self.max_pos = 80
@@ -232,6 +240,7 @@ class ASH_COATED_OSMIUM:
 
         offset = max(3, (spread_ema / 2) - 3)
 
+        # Take any obvious favorable trades
         for price, amount in order_depth.sell_orders.items():
             if price < price_ema - (offset + 1) and current_pos < self.max_pos:
                 qty = min(-amount, self.max_pos - current_pos)
@@ -244,6 +253,7 @@ class ASH_COATED_OSMIUM:
                 orders.append(Order(product, price, qty))
                 current_pos += qty
         
+        # Market make using the calculated ema
         if current_pos < self.max_pos:
             bid_price = int(price_ema - offset)
             bid_price = min(bid_price, best_bid + 1)
@@ -256,6 +266,7 @@ class ASH_COATED_OSMIUM:
         history[:] = [price_ema, spread_ema]
         return orders
 
+# Linear line with a positive slope
 class INTARIAN_PEPPER_ROOT:
     def __init__(self):
         self.window_size = 10
@@ -307,6 +318,101 @@ class INTARIAN_PEPPER_ROOT:
             orders.append(Order(product, math.ceil(predicted_price + 2*avg_market_spread), -self.max_pos - current_pos))
         return orders
 
+class HYDROGEL_PACK:
+    def __init__(self):
+        self.max_pos = 80
+        self.alpha = 0.3
+
+    def computeOrders(self, product, order_depth, current_pos, history):
+        orders = []
+        if not order_depth.sell_orders or not order_depth.buy_orders:
+            return orders
+        
+        best_ask = min(order_depth.sell_orders.keys())
+        best_bid = max(order_depth.buy_orders.keys())
+        current_mid = (best_ask + best_bid) / 2
+        current_spread = best_ask - best_bid
+        if len(history) < 2:
+            price_ema = current_mid
+            spread_ema = current_spread
+        else:
+            price_ema = (self.alpha * current_mid) + (1 - self.alpha) * history[0]
+            spread_ema = (self.alpha * current_spread) + (1 - self.alpha) * history[1]
+
+        offset = max(3, (spread_ema / 2) - 3)
+
+        for price, amount in order_depth.sell_orders.items():
+            if price < price_ema - (offset + 1) and current_pos < self.max_pos:
+                qty = min(-amount, self.max_pos - current_pos)
+                orders.append(Order(product, price, qty))
+                current_pos += qty
+
+        for price, amount in order_depth.buy_orders.items():
+            if price > price_ema + (offset + 1) and current_pos > -self.max_pos:
+                qty = max(-amount, -self.max_pos - current_pos)
+                orders.append(Order(product, price, qty))
+                current_pos += qty
+        
+        if current_pos < self.max_pos:
+            bid_price = int(price_ema - offset)
+            bid_price = min(bid_price, best_bid + 1)
+            orders.append(Order(product, bid_price, self.max_pos - current_pos))
+
+        if current_pos > -self.max_pos:
+            ask_price = int(price_ema + offset)
+            ask_price = max(ask_price, best_ask - 1)
+            orders.append(Order(product, ask_price, -self.max_pos - current_pos))
+        history[:] = [price_ema, spread_ema]
+        return orders
+
+class VELVETFRUIT_EXTRACT:
+    def __init__(self):
+        self.max_pos = 80
+        self.alpha = 0.3
+
+    def computeOrders(self, product, order_depth, current_pos, history):
+        orders = []
+        if not order_depth.sell_orders or not order_depth.buy_orders:
+            return orders
+        
+        best_ask = min(order_depth.sell_orders.keys())
+        best_bid = max(order_depth.buy_orders.keys())
+        current_mid = (best_ask + best_bid) / 2
+        current_spread = best_ask - best_bid
+        if len(history) < 2:
+            price_ema = current_mid
+            spread_ema = current_spread
+        else:
+            price_ema = (self.alpha * current_mid) + (1 - self.alpha) * history[0]
+            spread_ema = (self.alpha * current_spread) + (1 - self.alpha) * history[1]
+
+        offset = max(3, (spread_ema / 2) - 3)
+
+        for price, amount in order_depth.sell_orders.items():
+            if price < price_ema - (offset + 1) and current_pos < self.max_pos:
+                qty = min(-amount, self.max_pos - current_pos)
+                orders.append(Order(product, price, qty))
+                current_pos += qty
+
+        for price, amount in order_depth.buy_orders.items():
+            if price > price_ema + (offset + 1) and current_pos > -self.max_pos:
+                qty = max(-amount, -self.max_pos - current_pos)
+                orders.append(Order(product, price, qty))
+                current_pos += qty
+        
+        if current_pos < self.max_pos:
+            bid_price = int(price_ema - offset)
+            bid_price = min(bid_price, best_bid + 1)
+            orders.append(Order(product, bid_price, self.max_pos - current_pos))
+
+        if current_pos > -self.max_pos:
+            ask_price = int(price_ema + offset)
+            ask_price = max(ask_price, best_ask - 1)
+            orders.append(Order(product, ask_price, -self.max_pos - current_pos))
+        history[:] = [price_ema, spread_ema]
+        return orders
+
+
 
 class Trader:
     def __init__(self):
@@ -315,8 +421,10 @@ class Trader:
             "TOMATOES" : Tomato(),
             "ASH_COATED_OSMIUM" : ASH_COATED_OSMIUM(),
             "INTARIAN_PEPPER_ROOT" : INTARIAN_PEPPER_ROOT(),
+            "HYDROGEL_PACK" : HYDROGEL_PACK(),
+            "VELVETFRUIT_EXTRACT" : VELVETFRUIT_EXTRACT(),
         }
-        self.history = {"TOMATOES": [], "EMERALDS": [], "ASH_COATED_OSMIUM": [], "INTARIAN_PEPPER_ROOT": []}
+        self.history = {"TOMATOES": [], "EMERALDS": [], "ASH_COATED_OSMIUM": [], "INTARIAN_PEPPER_ROOT": [], "HYDROGEL_PACK": [], "VELVETFRUIT_EXTRACT": []}
 
     def run(self, state: TradingState) -> tuple[dict[Symbol, list[Order]], int, str]:
         result = {}
@@ -326,7 +434,8 @@ class Trader:
         for product in state.order_depths:
             order_depth = state.order_depths[product]
             current_pos = state.position.get(product, 0)
-            
+            if product.startswith("VEV"):
+                continue
             strategy = self.strategies[product]
             result[product] = strategy.computeOrders(product, order_depth, current_pos, self.history[product])
 
