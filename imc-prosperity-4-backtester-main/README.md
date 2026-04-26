@@ -34,6 +34,45 @@ Add Run/Debug Configuration:
 
 ![Pycham Config](images/pycharm.png)
 ---
+## Strategy Workflow
+
+For longer strategy files, this repo supports a split-source workflow:
+
+- editable strategy entrypoints live in `strategies/` as `*_dev.py`
+- shared reusable logic lives in `strategies/common/`
+- standalone submission artifacts are generated into `submit/`
+
+Build all current round 3 submission files:
+
+```bash
+make submissions
+```
+
+Build one submission file:
+
+```bash
+python scripts/build_strategy.py strategies/round_3_air_dev.py
+```
+
+That writes `submit/round_3_air.py` by default. If the entrypoint ends with `_dev.py`,
+the builder strips that suffix automatically when naming the submission file.
+
+Backtest a generated submission file from `submit/`:
+
+```bash
+make backtest
+make backtest STRATEGY=round_3_max ROUND=3-1
+```
+
+Defaults used by `make backtest`:
+
+- `STRATEGY=round_3_air`
+- `ROUND=3`
+- `BACKTEST_FLAGS=--no-vis --no-progress --no-out`
+
+See [strategies/README.md](strategies/README.md) for the round 3 strategy layout and
+shared module structure.
+
 ## Overall Structure & How It Works
 
 The architecture of the program is modularized to cleanly separate data loading, simulation execution, and order matching. Below is the structural diagram of the backtester:

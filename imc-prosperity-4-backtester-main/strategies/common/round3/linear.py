@@ -1,0 +1,290 @@
+import json
+import math
+from typing import Dict, List, Tuple
+
+from datamodel import Order, OrderDepth, Symbol, TradingState
+
+from common.round3.config import HYDROGEL_PACK, VELVETFRUIT_EXTRACT
+from common.round3.pricing import book_stats, ema
+
+
+class LinearProductConfig:
+    def __init__(
+        self,
+        max_position: int,
+        fast_alpha: float,
+        slow_alpha: float,
+        spread_alpha: float,
+        inventory_skew: float,
+        trend_weight: float,
+        micro_weight: float,
+        trend_cap: float,
+        min_half_width: int,
+        take_buffer: float,
+        passive_size: int,
+        taker_cap: int,
+        flatten_size: int,
+        signal_threshold: float,
+        one_sided_threshold: float,
+        late_flatten_start: int,
+        closeout_start: int,
+    ) -> None:
+        self.max_position = max_position
+        self.fast_alpha = fast_alpha
+        self.slow_alpha = slow_alpha
+        self.spread_alpha = spread_alpha
+        self.inventory_skew = inventory_skew
+        self.trend_weight = trend_weight
+        self.micro_weight = micro_weight
+        self.trend_cap = trend_cap
+        self.min_half_width = min_half_width
+        self.take_buffer = take_buffer
+        self.passive_size = passive_size
+        self.taker_cap = taker_cap
+        self.flatten_size = flatten_size
+        self.signal_threshold = signal_threshold
+        self.one_sided_threshold = one_sided_threshold
+        self.late_flatten_start = late_flatten_start
+        self.closeout_start = closeout_start
+
+
+LINEAR_CONFIGS: Dict[str, LinearProductConfig] = {
+    HYDROGEL_PACK: LinearProductConfig(36, 0.22, 0.05, 0.18, 13.0, 0.90, 0.65, 7.0, 4, 4.0, 8, 10, 14, 1.1, 3.0, 86000, 95000),
+    VELVETFRUIT_EXTRACT: LinearProductConfig(90, 0.18, 0.035, 0.18, 8.0, 0.60, 0.45, 4.0, 2, 2.0, 16, 18, 20, 0.7, 2.2, 93000, 98000),
+}
+
+
+def load_state(trader_data: str) -> Dict[str, Dict[str, float]]:
+    state: Dict[str, Dict[str, float]] = {"fast_ema": {}, "slow_ema": {}, "spread_ema": {}}
+    if not trader_data:
+        return state
+
+    try:
+        loaded = json.loads(trader_data)
+    except Exception:
+        return state
+
+    if not isinstance(loaded, dict):
+        return state
+
+    for key in state:
+        value = loaded.get(key, {})
+        if isinstance(value, dict):
+            state[key] = {str(name): float(number) for name, number in value.items()}
+
+    return state
+
+
+def dump_state(state: Dict[str, Dict[str, float]]) -> str:
+    return json.dumps(
+        {
+            key: {name: round(number, 6) for name, number in values.items()}
+            for key, values in state.items()
+        },
+        separators=(",", ":"),
+    )
+
+
+def clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
+
+
+def top_of_book_microprice(order_depth: OrderDepth, best_bid: int, best_ask: int, midpoint: float) -> float:
+    bid_volume = max(order_depth.buy_orders.get(best_bid, 0), 0)
+    ask_volume = max(-order_depth.sell_orders.get(best_ask, 0), 0)
+    total_volume = bid_volume + ask_volume
+    if total_volume <= 0:
+        return midpoint
+    return ((best_bid * ask_volume) + (best_ask * bid_volume)) / total_volume
+
+
+def take_orders(
+    product: str,
+    order_depth: OrderDepth,
+    reservation_price: float,
+    current_position: int,
+    max_position: int,
+    take_edge: float,
+    taker_cap: int,
+) -> Tuple[List[Order], int, int]:
+    orders: List[Order] = []
+    buy_capacity = max(0, max_position - current_position)
+    sell_capacity = max(0, max_position + current_position)
+    used_buy = 0
+    used_sell = 0
+
+    remaining_buy = min(taker_cap, buy_capacity)
+    for ask_price, ask_volume in sorted(order_depth.sell_orders.items()):
+        if ask_price > reservation_price - take_edge or remaining_buy <= 0:
+            break
+        quantity = min(-ask_volume, remaining_buy)
+        if quantity <= 0:
+            continue
+        orders.append(Order(product, ask_price, quantity))
+        remaining_buy -= quantity
+        used_buy += quantity
+        current_position += quantity
+
+    remaining_sell = min(taker_cap, sell_capacity)
+    for bid_price, bid_volume in sorted(order_depth.buy_orders.items(), reverse=True):
+        if bid_price < reservation_price + take_edge or remaining_sell <= 0:
+            break
+        quantity = min(bid_volume, remaining_sell)
+        if quantity <= 0:
+            continue
+        orders.append(Order(product, bid_price, -quantity))
+        remaining_sell -= quantity
+        used_sell += quantity
+        current_position -= quantity
+
+    return orders, used_buy, used_sell
+
+
+def quote_orders(
+    product: str,
+    order_depth: OrderDepth,
+    reservation_price: float,
+    spread_ema: float,
+    current_position: int,
+    used_buy: int,
+    used_sell: int,
+    trend_signal: float,
+    timestamp: int,
+    config: LinearProductConfig,
+) -> List[Order]:
+    stats = book_stats(order_depth)
+    if stats is None:
+        return []
+
+    best_bid, best_ask = stats[0], stats[1]
+    effective_position = current_position + used_buy - used_sell
+    buy_capacity = max(0, config.max_position - effective_position)
+    sell_capacity = max(0, config.max_position + effective_position)
+    if buy_capacity <= 0 and sell_capacity <= 0:
+        return []
+
+    inventory_ratio = effective_position / float(config.max_position)
+    half_width = max(config.min_half_width, int(round(spread_ema / 2.0)))
+    bid_price = max(0, min(int(math.floor(reservation_price - half_width)), best_ask - 1))
+    ask_price = max(int(math.ceil(reservation_price + half_width)), best_bid + 1)
+
+    bid_size = min(config.passive_size, buy_capacity)
+    ask_size = min(config.passive_size, sell_capacity)
+
+    if abs(trend_signal) < config.signal_threshold:
+        bid_size = max(0, bid_size // 2)
+        ask_size = max(0, ask_size // 2)
+    elif trend_signal > config.signal_threshold:
+        bid_size = min(buy_capacity, bid_size + config.passive_size // 2)
+        ask_size = max(0, ask_size - config.passive_size // 2)
+    elif trend_signal < -config.signal_threshold:
+        ask_size = min(sell_capacity, ask_size + config.passive_size // 2)
+        bid_size = max(0, bid_size - config.passive_size // 2)
+
+    if trend_signal >= config.one_sided_threshold and effective_position >= 0:
+        ask_size = 0
+    elif trend_signal <= -config.one_sided_threshold and effective_position <= 0:
+        bid_size = 0
+
+    if inventory_ratio > 0.65:
+        bid_size = 0
+        ask_size = min(sell_capacity, max(ask_size, config.flatten_size))
+        ask_price = max(best_bid, ask_price - 1)
+    elif inventory_ratio < -0.65:
+        ask_size = 0
+        bid_size = min(buy_capacity, max(bid_size, config.flatten_size))
+        bid_price = min(best_ask, bid_price + 1)
+
+    if timestamp >= config.late_flatten_start:
+        bid_size = max(0, bid_size // 2)
+        ask_size = max(0, ask_size // 2)
+
+    if timestamp >= config.closeout_start:
+        if effective_position > 0:
+            bid_size = 0
+            ask_size = min(sell_capacity, max(ask_size, min(config.flatten_size, abs(effective_position))))
+            ask_price = max(best_bid + 1, ask_price - 1)
+        elif effective_position < 0:
+            ask_size = 0
+            bid_size = min(buy_capacity, max(bid_size, min(config.flatten_size, abs(effective_position))))
+            bid_price = max(0, min(best_ask - 1, bid_price + 1))
+        else:
+            bid_size = max(0, bid_size // 2)
+            ask_size = max(0, ask_size // 2)
+
+    orders: List[Order] = []
+    if bid_size > 0:
+        orders.append(Order(product, bid_price, bid_size))
+    if ask_size > 0:
+        orders.append(Order(product, ask_price, -ask_size))
+    return orders
+
+
+class Trader:
+    def run(self, state: TradingState) -> Tuple[Dict[Symbol, List[Order]], int, str]:
+        trader_state = load_state(state.traderData)
+        result: Dict[Symbol, List[Order]] = {}
+        timestamp = int(state.timestamp)
+
+        for product, config in LINEAR_CONFIGS.items():
+            order_depth = state.order_depths.get(product)
+            stats = book_stats(order_depth)
+            prev_fast = trader_state["fast_ema"].get(product)
+            prev_slow = trader_state["slow_ema"].get(product)
+            prev_spread = trader_state["spread_ema"].get(product)
+
+            if stats is None:
+                if prev_fast is None or prev_slow is None:
+                    continue
+                fast_ema = prev_fast
+                slow_ema = prev_slow
+                spread_ema = prev_spread if prev_spread is not None else float(config.min_half_width * 2)
+            else:
+                best_bid, best_ask, midpoint, spread = stats
+                microprice = top_of_book_microprice(order_depth, best_bid, best_ask, midpoint)
+                micro_bias = clamp(microprice - midpoint, -spread / 2.0, spread / 2.0)
+                anchor_price = midpoint + (config.micro_weight * micro_bias)
+                fast_ema = ema(prev_fast, anchor_price, config.fast_alpha)
+                slow_ema = ema(prev_slow, anchor_price, config.slow_alpha)
+                spread_ema = ema(prev_spread, spread, config.spread_alpha)
+
+            trader_state["fast_ema"][product] = fast_ema
+            trader_state["slow_ema"][product] = slow_ema
+            trader_state["spread_ema"][product] = spread_ema
+
+            if order_depth is None or stats is None:
+                continue
+
+            trend_signal = clamp(fast_ema - slow_ema, -config.trend_cap, config.trend_cap)
+            model_price = slow_ema + (config.trend_weight * trend_signal)
+            current_position = state.position.get(product, 0)
+            reservation_price = model_price - (config.inventory_skew * current_position / float(config.max_position))
+
+            taker_orders, used_buy, used_sell = take_orders(
+                product,
+                order_depth,
+                reservation_price,
+                current_position,
+                config.max_position,
+                max(config.take_buffer, spread_ema / 2.0),
+                config.taker_cap,
+            )
+            if taker_orders:
+                result.setdefault(product, []).extend(taker_orders)
+
+            passive_orders = quote_orders(
+                product,
+                order_depth,
+                reservation_price,
+                spread_ema,
+                current_position,
+                used_buy,
+                used_sell,
+                trend_signal,
+                timestamp,
+                config,
+            )
+            if passive_orders:
+                result.setdefault(product, []).extend(passive_orders)
+
+        return result, 0, dump_state(trader_state)

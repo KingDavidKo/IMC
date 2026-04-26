@@ -1,0 +1,185 @@
+{
+  "graph_summary": {
+    "max_profit_point": {
+      "profit": 2181.011962890625,
+      "timestamp": 93000
+    },
+    "min_profit_point": {
+      "profit": -2565.510986328125,
+      "timestamp": 59600
+    },
+    "num_negative_points": 252,
+    "num_points": 500,
+    "num_positive_points": 247
+  },
+  "positions": {
+    "HYDROGEL_PACK": -15,
+    "VELVETFRUIT_EXTRACT": 33,
+    "VEV_4000": 4,
+    "VEV_4500": 4,
+    "VEV_5100": 53,
+    "VEV_5200": 68,
+    "XIRECS": -47852
+  },
+  "product_summary": {
+    "HYDROGEL_PACK": {
+      "final_mid_price": 9960.0,
+      "final_profit": 632.03125,
+      "max_profit": 1324.015625,
+      "max_profit_mid_price": 9915.0,
+      "max_profit_timestamp": 91100,
+      "mid_price_max": 10031.0,
+      "mid_price_min": 9915.0,
+      "min_profit": -62.9375,
+      "min_profit_mid_price": 9997.0,
+      "min_profit_timestamp": 69700,
+      "num_rows": 1000
+    },
+    "VELVETFRUIT_EXTRACT": {
+      "final_mid_price": 5264.0,
+      "final_profit": 487.546875,
+      "max_profit": 597.9375,
+      "max_profit_mid_price": 5275.5,
+      "max_profit_timestamp": 84700,
+      "mid_price_max": 5276.5,
+      "mid_price_min": 5241.5,
+      "min_profit": -703.875,
+      "min_profit_mid_price": 5241.5,
+      "min_profit_timestamp": 59700,
+      "num_rows": 1000
+    },
+    "VEV_4000": {
+      "final_mid_price": 1264.0,
+      "final_profit": 72.3095703125,
+      "max_profit": 117.20751953125,
+      "max_profit_mid_price": 1275.5,
+      "max_profit_timestamp": 84700,
+      "mid_price_max": 1276.5,
+      "mid_price_min": 1241.5,
+      "min_profit": -50.3056640625,
+      "min_profit_mid_price": 1241.5,
+      "min_profit_timestamp": 59700,
+      "num_rows": 1000
+    },
+    "VEV_4500": {
+      "final_mid_price": 764.0,
+      "final_profit": 64.3095703125,
+      "max_profit": 109.20751953125,
+      "max_profit_mid_price": 775.5,
+      "max_profit_timestamp": 84700,
+      "mid_price_max": 776.5,
+      "mid_price_min": 741.0,
+      "min_profit": -56.30517578125,
+      "min_profit_mid_price": 741.0,
+      "min_profit_timestamp": 59700,
+      "num_rows": 1000
+    },
+    "VEV_5000": {
+      "final_mid_price": 267.0,
+      "final_profit": 0.0,
+      "max_profit": 0.0,
+      "max_profit_mid_price": 270.0,
+      "max_profit_timestamp": 0,
+      "mid_price_max": 279.0,
+      "mid_price_min": 245.0,
+      "min_profit": 0.0,
+      "min_profit_mid_price": 270.0,
+      "min_profit_timestamp": 0,
+      "num_rows": 1000
+    },
+    "VEV_5100": {
+      "final_mid_price": 176.0,
+      "final_profit": -190.1123046875,
+      "max_profit": 333.802734375,
+      "max_profit_mid_price": 186.0,
+      "max_profit_timestamp": 84700,
+      "mid_price_max": 186.5,
+      "mid_price_min": 157.0,
+      "min_profit": -1193.3818359375,
+      "min_profit_mid_price": 157.0,
+      "min_profit_timestamp": 59600,
+      "num_rows": 1000
+    },
+    "VEV_5200": {
+      "final_mid_price": 102.5,
+      "final_profit": -187.31396484375,
+      "max_profit": 356.0693359375,
+      "max_profit_mid_price": 110.5,
+      "max_profit_timestamp": 17400,
+      "mid_price_max": 110.5,
+      "mid_price_min": 87.5,
+      "min_profit": -1189.84619140625,
+      "min_profit_mid_price": 87.5,
+      "min_profit_timestamp": 59700,
+      "num_rows": 1000
+    },
+    "VEV_5300": {
+      "final_mid_price": 50.0,
+      "final_profit": 0.0,
+      "max_profit": 0.0,
+      "max_profit_mid_price": 53.0,
+      "max_profit_timestamp": 0,
+      "mid_price_max": 57.0,
+      "mid_price_min": 41.0,
+      "min_profit": 0.0,
+      "min_profit_mid_price": 53.0,
+      "min_profit_timestamp": 0,
+      "num_rows": 1000
+    },
+    "VEV_5400": {
+      "final_mid_price": 16.0,
+      "final_profit": 0.0,
+      "max_profit": 0.0,
+      "max_profit_mid_price": 17.0,
+      "max_profit_timestamp": 0,
+      "mid_price_max": 19.0,
+      "mid_price_min": 12.0,
+      "min_profit": 0.0,
+      "min_profit_mid_price": 17.0,
+      "min_profit_timestamp": 0,
+      "num_rows": 1000
+    },
+    "VEV_5500": {
+      "final_mid_price": 6.5,
+      "final_profit": 0.0,
+      "max_profit": 0.0,
+      "max_profit_mid_price": 6.5,
+      "max_profit_timestamp": 0,
+      "mid_price_max": 7.5,
+      "mid_price_min": 4.5,
+      "min_profit": 0.0,
+      "min_profit_mid_price": 6.5,
+      "min_profit_timestamp": 0,
+      "num_rows": 1000
+    },
+    "VEV_6000": {
+      "final_mid_price": 0.5,
+      "final_profit": 0.0,
+      "max_profit": 0.0,
+      "max_profit_mid_price": 0.5,
+      "max_profit_timestamp": 0,
+      "mid_price_max": 0.5,
+      "mid_price_min": 0.5,
+      "min_profit": 0.0,
+      "min_profit_mid_price": 0.5,
+      "min_profit_timestamp": 0,
+      "num_rows": 1000
+    },
+    "VEV_6500": {
+      "final_mid_price": 0.5,
+      "final_profit": 0.0,
+      "max_profit": 0.0,
+      "max_profit_mid_price": 0.5,
+      "max_profit_timestamp": 0,
+      "mid_price_max": 0.5,
+      "mid_price_min": 0.5,
+      "min_profit": 0.0,
+      "min_profit_mid_price": 0.5,
+      "min_profit_timestamp": 0,
+      "num_rows": 1000
+    }
+  },
+  "profit": 878.77099609375,
+  "round": "3",
+  "status": "FINISHED"
+}

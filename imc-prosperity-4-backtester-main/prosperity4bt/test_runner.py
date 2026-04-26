@@ -92,9 +92,13 @@ class TestRunner:
 
             state.order_depths[product] = order_depth
 
+        plain_value_observations = {
+            "__bt_round_num": data.round_num,
+            "__bt_day_num": data.day_num,
+        }
         observation_row = data.observations.get(state.timestamp)
         if observation_row is None:
-            state.observations = Observation({}, {})
+            state.observations = Observation(plain_value_observations, {})
         else:
             conversion_observation = ConversionObservation(
                 bidPrice=observation_row.bidPrice,
@@ -106,7 +110,8 @@ class TestRunner:
                 sunlightIndex=observation_row.sunlightIndex,
             )
             state.observations = Observation(
-                plainValueObservations={}, conversionObservations={"MAGNIFICENT_MACARONS": conversion_observation}
+                plainValueObservations=plain_value_observations,
+                conversionObservations={"MAGNIFICENT_MACARONS": conversion_observation},
             )
 
         return state
